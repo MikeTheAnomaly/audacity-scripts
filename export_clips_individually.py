@@ -18,7 +18,7 @@ import sys
 import os
 import json
 import re
-
+import time
 # Add src to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
@@ -173,13 +173,37 @@ def export_clips_individually(output_dir: str, prefix: str, file_extension: str)
             
             print(f"✓ Found {len(clips_to_export)} clip(s) to export from unmuted tracks\n")
             
+            # Create a temporary export track at the end
+            print("3. Creating temporary export track...")
+            cmd.new_stereo_track()
+            
+            # Get updated track count to know the index of our temp track
+            tracks_info_updated = cmd.get_info("Tracks")
+            tracks_data_updated = json.loads(tracks_info_updated)
+            temp_track_idx = len(tracks_data_updated) - 1
+            print(f"✓ Created temporary track at index {temp_track_idx}\n")
+            
             # Export each clip
+
+            # Mute all other tracks except the temp track
+            num_tracks = len(tracks_data_updated)
+            for t in range(num_tracks):
+                cmd.select_none()
+                cmd.select_tracks(track=t, track_count=1, mode="Set")
+                if t == temp_track_idx:
+                    cmd.set_track_audio(mute=False)
+                else:
+                    cmd.set_track_audio(mute=True)
+
             exported_count = 0
             for i, clip in enumerate(clips_to_export, start=1):
                 clip_name = clip.get('name', f'clip_{i}')
-                track_idx = clip.get('track', 0)
-                start_time = clip.get('start', 0.0)
-                end_time = clip.get('end', 0.0)
+                track_idx = clip.get('track', -1)
+                start_time = clip.get('start', -10.0)
+                end_time = clip.get('end', -10.0)
+                if track_idx == -1 or start_time < 0 or end_time <= start_time:
+                    print(f"  Skipping clip '{clip_name}' due to invalid data")
+                    continue
                 
                 # Sanitize the clip name for use as filename
                 safe_name = sanitize_filename(clip_name)
@@ -209,13 +233,33 @@ def export_clips_individually(output_dir: str, prefix: str, file_extension: str)
                 print(f"  → {output_path}")
                 
                 try:
-                    # Select the specific track
+                    # Select the specific track with the clip
+                    cmd.select_none()
                     cmd.select_tracks(track=track_idx, track_count=1, mode="Set")
                     
                     # Select the time range of this clip
-                    cmd.select_time(start=start_time, end=end_time, relative_to="Project")
+                    cmd.select_time(start=start_time, end=end_time, relative_to="ProjectStart")
                     
-                    # Export the selected region
+                    # Copy the selected audio
+                    cmd.copy()
+                    
+                    # Select the temporary export track
+                    # Clear any existing audio in the temp track
+                    cmd.select_none()
+                    cmd.select_tracks(track=temp_track_idx, track_count=1, mode="Set")
+                    cmd.select_time(start=0, end=100, relative_to="ProjectStart")
+                    cmd.delete()
+
+                    cmd.select_none()
+                    cmd.select_tracks(track=temp_track_idx, track_count=1, mode="Set")
+
+                    # Paste the clip into the temp track
+                    cmd.paste()
+                    
+                    # Select the temp track and export it
+                    cmd.select_none()
+                    cmd.select_tracks(track=temp_track_idx, track_count=1, mode="Set")
+                    cmd.select_time(start=0, end= end_time - start_time, relative_to="ProjectStart")
                     result = cmd.export_audio(output_path, num_channels=2)
                     
                     exported_count += 1

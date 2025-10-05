@@ -87,7 +87,7 @@ class Commands:
         return self.pipe.do_command("SelectNone:")
     
     def select_time(self, start: float, end: float, 
-                   relative_to: str = "Project") -> str:
+                   relative_to: str = "ProjectStart") -> str:
         """
         Select a time range.
         
@@ -504,6 +504,31 @@ class Commands:
     def remove_tracks(self) -> str:
         """Remove the selected tracks."""
         return self.pipe.do_command("RemoveTracks:")
+    
+    # Edit Operations
+    def copy(self) -> str:
+        """Copy the selected audio to clipboard."""
+        return self.pipe.do_command("Copy:")
+    
+    def paste(self) -> str:
+        """Paste audio from clipboard."""
+        return self.pipe.do_command("Paste:")
+    
+    def cut(self) -> str:
+        """Cut the selected audio to clipboard."""
+        return self.pipe.do_command("Cut:")
+    
+    def delete(self) -> str:
+        """Delete the selected audio."""
+        return self.pipe.do_command("Delete:")
+    
+    def duplicate(self) -> str:
+        """Duplicate the selected audio."""
+        return self.pipe.do_command("Duplicate:")
+    
+    def split(self) -> str:
+        """Split the selected audio at the cursor position."""
+        return self.pipe.do_command("Split:")
     
     def mix_and_render(self) -> str:
         """Mix selected tracks down to a single track."""
